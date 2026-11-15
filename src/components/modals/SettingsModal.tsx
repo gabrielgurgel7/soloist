@@ -39,6 +39,7 @@ import {
   getStoredProjects,
   resetAllCrmData,
 } from "../../services/crmStorage";
+import { useBrazilCities } from "../../services/brazilCities";
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -172,6 +173,26 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTabId>("geral");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [savedFeedback, setSavedFeedback] = useState<boolean>(false);
+  const { cities, states, specialLocalities, isLoading: isLoadingCities } =
+    useBrazilCities();
+  const [selectedUfFilter, setSelectedUfFilter] = useState<string>(() => {
+    const current = getStoredSettings().defaultLocality;
+    const parts = current.split(" - ");
+    if (parts.length === 2 && parts[1].length === 2) {
+      return parts[1];
+    }
+    return "SP";
+  });
+  const [citySearchFilter, setCitySearchFilter] = useState<string>("");
+
+  const filteredCitiesForSelect = cities.filter((city) => {
+    const matchesUf =
+      selectedUfFilter === "TODAS" ? true : city.uf === selectedUfFilter;
+    const matchesQuery = citySearchFilter.trim()
+      ? city.label.toLowerCase().includes(citySearchFilter.trim().toLowerCase())
+      : true;
+    return matchesUf && matchesQuery;
+  });
 
   const activeCategory =
     CATEGORIES.find((cat) => cat.id === activeTab) ?? CATEGORIES[0];
@@ -508,28 +529,113 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
                 <SettingPillRow
                   icon={MapPin}
-                  label="Localidade Padrão"
-                  hint="Pré-selecionada nos orçamentos"
+                  label="Localidade Padrão (Cidades do Brasil - IBGE)"
+                  hint={
+                    isLoadingCities
+                      ? "Carregando municípios do IBGE..."
+                      : `${cities.length.toLocaleString("pt-BR")} cidades disponíveis`
+                  }
                 >
                   <select
+                    aria-label="Filtrar estado (UF)"
+                    value={selectedUfFilter}
+                    onChange={(e) => {
+                      const nextUf = e.target.value;
+                      setSelectedUfFilter(nextUf);
+                      if (nextUf !== "TODAS") {
+                        const firstInState = cities.find(
+                          (c) => c.uf === nextUf,
+                        );
+                        if (firstInState) {
+                          updateSetting("defaultLocality", firstInState.label);
+                        }
+                      }
+                    }}
+                    className="text-neutral-900 bg-pistache-solar font-bold text-xs px-2 py-1 rounded-full outline-none cursor-pointer shrink-0"
+                  >
+                    <option value="TODAS" className="bg-neutral-800 text-amber-50">
+                      Todas UFs
+                    </option>
+                    {states.map((st) => (
+                      <option
+                        key={st.uf}
+                        value={st.uf}
+                        className="bg-neutral-800 text-amber-50"
+                      >
+                        {st.uf} - {st.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="text"
+                    value={citySearchFilter}
+                    onChange={(e) => setCitySearchFilter(e.target.value)}
+                    placeholder="Filtrar cidade..."
+                    aria-label="Filtrar cidade pelo nome"
+                    className="hidden sm:block text-neutral-200 outline-none bg-neutral-900/40 border border-white/10 px-2.5 py-1 rounded-full w-32 text-xs shrink-0"
+                  />
+
+                  <select
+                    aria-label="Selecionar cidade padrão"
                     value={settings.defaultLocality}
                     onChange={(e) =>
                       updateSetting("defaultLocality", e.target.value)
                     }
-                    className="text-pistache-solar outline-none bg-transparent w-full text-sm"
+                    className="text-pistache-solar outline-none bg-transparent w-full text-sm truncate cursor-pointer"
                   >
-                    <option value="São Paulo" className="bg-neutral-800">
-                      São Paulo / Capital
-                    </option>
-                    <option value="Interior" className="bg-neutral-800">
-                      Interior / Regional
-                    </option>
-                    <option value="Remoto Nacional" className="bg-neutral-800">
-                      Remoto Nacional
-                    </option>
-                    <option value="Internacional" className="bg-neutral-800">
-                      Internacional
-                    </option>
+                    {!filteredCitiesForSelect.some(
+                      (c) => c.label === settings.defaultLocality,
+                    ) &&
+                      !specialLocalities.some(
+                        (s) =>
+                          s.label === settings.defaultLocality ||
+                          s.name === settings.defaultLocality,
+                      ) && (
+                        <option
+                          value={settings.defaultLocality}
+                          className="bg-neutral-800"
+                        >
+                          {settings.defaultLocality}
+                        </option>
+                      )}
+
+                    <optgroup
+                      label={
+                        selectedUfFilter === "TODAS"
+                          ? "Municípios do Brasil (IBGE)"
+                          : `Municípios de ${selectedUfFilter} (${filteredCitiesForSelect.length})`
+                      }
+                      className="bg-neutral-800 text-pistache-solar"
+                    >
+                      {(selectedUfFilter === "TODAS" && !citySearchFilter.trim()
+                        ? filteredCitiesForSelect.slice(0, 400)
+                        : filteredCitiesForSelect
+                      ).map((city) => (
+                        <option
+                          key={city.label}
+                          value={city.label}
+                          className="bg-neutral-800 text-neutral-100"
+                        >
+                          {city.label}
+                        </option>
+                      ))}
+                    </optgroup>
+
+                    <optgroup
+                      label="Modalidades Globais"
+                      className="bg-neutral-800 text-pistache-solar"
+                    >
+                      {specialLocalities.map((spec) => (
+                        <option
+                          key={spec.label}
+                          value={spec.name}
+                          className="bg-neutral-800 text-neutral-100"
+                        >
+                          {spec.label}
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
                 </SettingPillRow>
 

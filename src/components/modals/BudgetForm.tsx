@@ -13,6 +13,7 @@ import {
   getStoredSettings,
   getCalculatedBaseHourlyCost,
 } from "../../services/crmStorage";
+import { useBrazilCities } from "../../services/brazilCities";
 
 interface BudgetFormProps {
   onSave?: (quote: QuoteRequest, finalPrice: number) => void;
@@ -51,6 +52,7 @@ export function BudgetForm({ onSave, onClose }: BudgetFormProps) {
     getInitialFormData(),
   );
   const [errors, setErrors] = useState<string[]>([]);
+  const { cities, specialLocalities } = useBrazilCities();
 
   function handleChange(
     event: React.ChangeEvent<
@@ -315,29 +317,28 @@ export function BudgetForm({ onSave, onClose }: BudgetFormProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div>
               <label htmlFor="locality" className="text-neutral-50 text-sm">
-                Localidade
+                Localidade (Cidade / UF)
               </label>
-              <div className="flex items-center gap-2 bg-neutral-500/30 h-10 px-2 rounded-full w-full">
-                <select
+              <div className="flex items-center gap-2 bg-neutral-500/30 h-10 px-3 rounded-full w-full">
+                <input
                   id="locality"
                   name="locality"
+                  list="budget-brazil-cities-list"
                   value={formData.locality}
                   onChange={handleChange}
-                  className="text-pistache-solar outline-none bg-transparent w-full"
-                >
-                  <option value="São Paulo" className="bg-neutral-800">
-                    São Paulo / Capital
-                  </option>
-                  <option value="Interior" className="bg-neutral-800">
-                    Interior / Regional
-                  </option>
-                  <option value="Remoto Nacional" className="bg-neutral-800">
-                    Remoto Nacional
-                  </option>
-                  <option value="Internacional" className="bg-neutral-800">
-                    Internacional
-                  </option>
-                </select>
+                  placeholder="Ex: São Paulo - SP"
+                  className="text-pistache-solar outline-none bg-transparent w-full text-sm truncate"
+                />
+                <datalist id="budget-brazil-cities-list">
+                  {specialLocalities.map((spec) => (
+                    <option key={spec.label} value={spec.name}>
+                      {spec.label}
+                    </option>
+                  ))}
+                  {cities.slice(0, 600).map((city) => (
+                    <option key={city.label} value={city.label} />
+                  ))}
+                </datalist>
               </div>
             </div>
             <div>

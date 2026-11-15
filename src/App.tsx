@@ -6,6 +6,7 @@ import { Routes, Route } from "react-router-dom";
 import { ServicesPage } from "./pages/ServicesPage";
 import { ClientsPage } from "./pages/ClientsPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
+import { EmailsPage } from "./pages/EmailsPage";
 import { ConfigPage } from "./pages/ConfigPage";
 import { AppFooter } from "./components/footer/AppFooter";
 import { getStoredSettings } from "./services/crmStorage";
@@ -23,6 +24,7 @@ function App() {
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/clients" element={<ClientsPage />} />
         <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/emails" element={<EmailsPage />} />
         <Route path="/" element={<ConfigPage />} />
       </Routes>
       <AppFooter />

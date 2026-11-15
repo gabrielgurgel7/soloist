@@ -5,6 +5,7 @@ import {
   Layers,
   Users,
   FolderKanban,
+  Mail,
   type LucideIcon,
 } from "lucide-react";
 import { LoginButton, NotifyButton, SettingsButton } from "../buttons/Buttons";
@@ -66,6 +67,12 @@ export function AppHeader() {
       path: "/projects",
       icon: FolderKanban,
     },
+    {
+      label: "E-mails",
+      mobileLabel: "E-mails",
+      path: "/emails",
+      icon: Mail,
+    },
   ];
 
   return (
@@ -91,8 +98,8 @@ export function AppHeader() {
           </div>
         </div>
 
-        {/* Navegação Responsiva: Grade de 4 Pílulas com Ícones no Mobile / Inline no Desktop */}
-        <nav className="grid grid-cols-4 md:inline-flex items-center gap-1 sm:gap-2 md:gap-3 text-amber-50 transition-colors w-full md:w-auto bg-neutral-900/40 md:bg-transparent p-1 md:p-0 rounded-full border border-white/10 md:border-0">
+        {/* Navegação Responsiva: Grade de 5 Pílulas com Ícones no Mobile / Inline no Desktop */}
+        <nav className="grid grid-cols-5 md:inline-flex items-center gap-1 sm:gap-2 md:gap-3 text-amber-50 transition-colors w-full md:w-auto bg-neutral-900/40 md:bg-transparent p-1 md:p-0 rounded-full border border-white/10 md:border-0">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive =
