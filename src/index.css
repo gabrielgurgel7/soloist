@@ -1,0 +1,222 @@
+/* 
+    O index.css é o arquivo de estilos globais, importado no main.tsx
+*/
+
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Sora";
+  src: url("/src/assets/fonts/sora.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("/src/assets/fonts/inter.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+}
+
+@theme {
+  --color-pistache-solar: #e4fd97;
+  --color-musgo-escuro: #2d3e2c;
+
+  --font-sora: "Sora", sans-serif;
+  --font-inter: "Inter", sans-serif;
+}
+
+/* Scrollbar estilizada para colunas e carrinho com altura compacta */
+.solo-card-scroll {
+  max-height: 31rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(228, 253, 151, 0.45) rgba(23, 23, 23, 0.4);
+}
+
+.solo-cart-scroll {
+  max-height: 24rem;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(228, 253, 151, 0.45) rgba(23, 23, 23, 0.4);
+}
+
+.solo-card-scroll::-webkit-scrollbar,
+.solo-cart-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.solo-card-scroll::-webkit-scrollbar-track,
+.solo-cart-scroll::-webkit-scrollbar-track {
+  background: rgba(23, 23, 23, 0.4);
+  border-radius: 9999px;
+}
+
+.solo-card-scroll::-webkit-scrollbar-thumb,
+.solo-cart-scroll::-webkit-scrollbar-thumb {
+  background: rgba(228, 253, 151, 0.45);
+  border-radius: 9999px;
+}
+
+.solo-card-scroll::-webkit-scrollbar-thumb:hover,
+.solo-cart-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(228, 253, 151, 0.8);
+}
+
+/* ==========================================================================
+   TEMA CLARO COMPLETO E HARMÔNICO (SOLOIST LIGHT MODE)
+   Paleta: Fundo Alabastro/Sálvia (#f2f6ee), Painéis Creme/Musgo Suave,
+   Tipografia Musgo Profundo (#1b2c1d) e Destaques Pistache Solar (#e4fd97)
+   ========================================================================== */
+
+html[data-theme="light"] body,
+html[data-theme="light"] .soloist-app-main {
+  background-color: #eef3ea !important;
+  color: #1b2c1d;
+}
+
+/* Header e Footer principais */
+html[data-theme="light"] header.bg-emerald-950\/60,
+html[data-theme="light"] footer.bg-emerald-950\/60 {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(45, 62, 44, 0.16) !important;
+  box-shadow: 0 8px 24px rgba(45, 62, 44, 0.07);
+}
+
+/* Frames principais das páginas (Sections) */
+html[data-theme="light"] section.bg-green-950\/60 {
+  background-color: rgba(226, 236, 219, 0.85) !important;
+  border-color: rgba(45, 62, 44, 0.18) !important;
+  box-shadow: 0 12px 32px rgba(45, 62, 44, 0.08);
+}
+
+/* Corpo dos BaseCards e painéis internos esmeraldas */
+html[data-theme="light"] .bg-emerald-950\/60,
+html[data-theme="light"] .bg-emerald-950\/70,
+html[data-theme="light"] .bg-emerald-950\/75,
+html[data-theme="light"] .bg-emerald-950\/80,
+html[data-theme="light"] .bg-emerald-900\/80,
+html[data-theme="light"] .bg-emerald-900\/70,
+html[data-theme="light"] .bg-green-950\/45,
+html[data-theme="light"] .bg-green-950\/50 {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-color: rgba(45, 62, 44, 0.15) !important;
+  box-shadow: 0 4px 14px rgba(45, 62, 44, 0.05);
+}
+
+/* Barras de cabeçalho de seção (SectionHeader) e containers neutros escuros */
+html[data-theme="light"] .bg-neutral-900\/95,
+html[data-theme="light"] .bg-neutral-900\/90,
+html[data-theme="light"] .bg-neutral-900\/80,
+html[data-theme="light"] .bg-neutral-900\/70,
+html[data-theme="light"] .bg-neutral-900\/60,
+html[data-theme="light"] .bg-neutral-900\/50,
+html[data-theme="light"] .bg-neutral-900\/40,
+html[data-theme="light"] .bg-neutral-900\/30,
+html[data-theme="light"] .bg-neutral-900\/20 {
+  background-color: #e4ecde !important;
+  border-color: rgba(45, 62, 44, 0.16) !important;
+  box-shadow: 0 4px 12px rgba(45, 62, 44, 0.06) !important;
+}
+
+/* Cabeçalhos de modais e cards que usavam bg-neutral-700 */
+html[data-theme="light"] .bg-neutral-700 {
+  background-color: #2d3e2c !important;
+}
+
+/* Barras de progresso e fundos neutros secundários */
+html[data-theme="light"] .bg-neutral-800 {
+  background-color: #cfdcc7 !important;
+  color: #1b2c1d !important;
+}
+
+/* Inputs, selects e pills de formulário */
+html[data-theme="light"] .bg-neutral-500\/30,
+html[data-theme="light"] .bg-neutral-500\/20,
+html[data-theme="light"] .bg-white\/5,
+html[data-theme="light"] .bg-white\/10 {
+  background-color: rgba(45, 62, 44, 0.09) !important;
+  border-color: rgba(45, 62, 44, 0.18) !important;
+}
+
+/* Círculos de ícones dentro dos inputs */
+html[data-theme="light"] .bg-neutral-300 {
+  background-color: #2d3e2c !important;
+  color: #e4fd97 !important;
+}
+
+/* Botões primários neutros no modo claro */
+html[data-theme="light"] .bg-neutral-500 {
+  background-color: #2d3e2c !important;
+  color: #f8faf6 !important;
+}
+
+html[data-theme="light"] .bg-neutral-500:hover {
+  background-color: #3d533b !important;
+}
+
+/* Dropzone do carrinho no modo claro */
+html[data-theme="light"] .to-neutral-950,
+html[data-theme="light"] .to-neutral-950\/90,
+html[data-theme="light"] .via-emerald-950\/50,
+html[data-theme="light"] .from-neutral-900\/80 {
+  --tw-gradient-from: rgba(228, 253, 151, 0.35) !important;
+  --tw-gradient-via: rgba(220, 234, 211, 0.7) !important;
+  --tw-gradient-to: rgba(244, 248, 241, 0.95) !important;
+}
+
+/* Tipografia principal e secundária adaptada para fundo claro */
+html[data-theme="light"] .text-amber-50,
+html[data-theme="light"] .text-neutral-50,
+html[data-theme="light"] .text-neutral-100,
+html[data-theme="light"] .text-neutral-200 {
+  color: #1b2c1d !important;
+}
+
+/* Preserva texto claro dentro de botões com fundo escuro (#2d3e2c) */
+html[data-theme="light"] .bg-neutral-500.text-neutral-50,
+html[data-theme="light"] .bg-slate-800\/80.text-white {
+  color: #f8faf6 !important;
+}
+
+html[data-theme="light"] .text-neutral-300,
+html[data-theme="light"] .text-neutral-400 {
+  color: #4a5e4b !important;
+}
+
+/* Pistache Solar como texto passa para Verde Floresta Vivo no fundo claro para leitura perfeita */
+html[data-theme="light"] .text-pistache-solar {
+  color: #1f5c30 !important;
+}
+
+/* Mas dentro do cabeçalho escuro (.bg-neutral-700) mantém o Pistache Solar original luminoso! */
+html[data-theme="light"] .bg-neutral-700 .text-pistache-solar,
+html[data-theme="light"] .bg-neutral-700.text-pistache-solar,
+html[data-theme="light"] .bg-emerald-950.text-pistache-solar {
+  color: #e4fd97 !important;
+}
+
+/* Placeholders nos inputs no modo claro */
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder {
+  color: #637864 !important;
+}
+
+/* Bordas e linhas divisórias (LineDivision) no modo claro */
+html[data-theme="light"] .border-white\/10,
+html[data-theme="light"] .border-white\/15,
+html[data-theme="light"] .border-white\/20,
+html[data-theme="light"] .border-amber-50\/10,
+html[data-theme="light"] .border-neutral-500,
+html[data-theme="light"] .border-neutral-500\/60 {
+  border-color: rgba(45, 62, 44, 0.18) !important;
+}
+
+/* Scrollbar no modo claro */
+html[data-theme="light"] .solo-card-scroll {
+  scrollbar-color: rgba(45, 62, 44, 0.4) rgba(45, 62, 44, 0.08);
+}
+
+
+
