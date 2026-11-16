@@ -25,6 +25,23 @@
   --font-inter: "Inter", sans-serif;
 }
 
+/* Remove o fundo amarelo padrão do autofill do navegador nos inputs pílula */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #e4fd97 !important;
+  -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+html[data-theme="light"] input:-webkit-autofill,
+html[data-theme="light"] input:-webkit-autofill:hover,
+html[data-theme="light"] input:-webkit-autofill:focus,
+html[data-theme="light"] input:-webkit-autofill:active {
+  -webkit-text-fill-color: #1f5c30 !important;
+}
+
 /* Scrollbar estilizada para colunas e carrinho com altura compacta */
 .solo-card-scroll {
   max-height: 31rem;

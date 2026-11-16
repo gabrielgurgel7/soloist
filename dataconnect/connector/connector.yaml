@@ -1,0 +1,6 @@
+connectorId: "soloist-connector"
+generate:
+  javascriptSdk:
+    outputDir: "../../src/lib/dataconnect-sdk"
+    package: "@soloist/dataconnect"
+    packageJsonDir: "../.."

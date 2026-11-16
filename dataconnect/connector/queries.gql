@@ -1,0 +1,177 @@
+# ============================================================================
+# SOLOIST CRM — QUERIES AUTORIZADAS (ROW-LEVEL SECURITY VIA auth.uid)
+# Todas as consultas exigem autenticação (@auth(level: USER)) e filtram
+# estritamente por `owner: { uid: { eq_expr: "auth.uid" } }` no servidor.
+# ============================================================================
+
+# 1. Perfil e Configurações do Estúdio do Usuário Autenticado
+query GetMySettings @auth(level: USER) {
+  user(key: { uid_expr: "auth.uid" }) {
+    uid
+    email
+    userName
+    studioName
+    theme
+    defaultLocality
+    proposalValidityDays
+    monthlyFixedCosts
+    desiredMonthlySalary
+    productiveHoursPerMonth
+    defaultProfitMargin
+    defaultComboDiscount
+    urgencyUrgentMultiplier
+    complexityMediumMultiplier
+    complexityHighMultiplier
+    segmentSmallBizMultiplier
+    segmentLargeBizMultiplier
+    extraRevisionRatePercent
+    defaultProjectStatus
+    defaultRevisionsIncluded
+    autoClassifyClientTicket
+    premiumTicketThreshold
+    updatedAt
+  }
+}
+
+# 2. Listar Presets de Serviços do Catálogo do Usuário
+query ListMyCatalogServices @auth(level: USER) {
+  catalogServices(
+    where: { owner: { uid: { eq_expr: "auth.uid" } } }
+    orderBy: [{ timesRequested: DESC }, { createdAt: DESC }]
+  ) {
+    id
+    title
+    description
+    category
+    price
+    estimatedHours
+    revisionsIncluded
+    complexity
+    timesRequested
+    createdAt
+  }
+}
+
+# 3. Listar Histórico de Combos do Usuário (com serviços relacionados N:N)
+query ListMyServiceCombos @auth(level: USER) {
+  serviceCombos(
+    where: { owner: { uid: { eq_expr: "auth.uid" } } }
+    orderBy: [{ createdAt: DESC }]
+  ) {
+    id
+    comboName
+    serviceTitles
+    discountPercent
+    totalHours
+    totalRevisions
+    finalPrice
+    lastClientName
+    timesReused
+    createdAt
+    services: catalogServices_via_ServiceComboItem {
+      id
+      title
+      price
+    }
+  }
+}
+
+# 4. Listar Carteira de Clientes do Usuário
+query ListMyClients($status: String) @auth(level: USER) {
+  clients(
+    where: {
+      owner: { uid: { eq_expr: "auth.uid" } }
+      status: { eq: $status }
+    }
+    orderBy: [{ updatedAt: DESC }]
+  ) {
+    id
+    name
+    company
+    email
+    phone
+    birthDate
+    ticket
+    status
+    lastContact
+    createdAt
+    projects: projects_on_client {
+      id
+      name
+      status
+      value
+      isPaid
+    }
+  }
+}
+
+# 5. Listar Projetos do Quadro Kanban do Usuário
+query ListMyProjects($status: String) @auth(level: USER) {
+  projects(
+    where: {
+      owner: { uid: { eq_expr: "auth.uid" } }
+      status: { eq: $status }
+    }
+    orderBy: [{ updatedAt: DESC }]
+  ) {
+    id
+    name
+    clientName
+    status
+    type
+    value
+    isPaid
+    startDate
+    deadline
+    createdAt
+    client {
+      id
+      name
+      email
+      ticket
+    }
+  }
+}
+
+# 6. Listar Templates de E-mail do Usuário
+query ListMyEmailTemplates($category: String) @auth(level: USER) {
+  emailTemplates(
+    where: {
+      owner: { uid: { eq_expr: "auth.uid" } }
+      category: { eq: $category }
+    }
+    orderBy: [{ updatedAt: DESC }]
+  ) {
+    id
+    name
+    category
+    subject
+    greeting
+    body
+    ctaLabel
+    ctaUrl
+    signature
+    visualTheme
+    updatedAt
+  }
+}
+
+# 7. Listar Histórico de E-mails Enviados / Rascunhos do Usuário
+query ListMySentEmails @auth(level: USER) {
+  sentEmails(
+    where: { owner: { uid: { eq_expr: "auth.uid" } } }
+    orderBy: [{ sentAt: DESC }]
+    limit: 50
+  ) {
+    id
+    templateName
+    category
+    recipientName
+    recipientEmail
+    projectName
+    subject
+    renderedBody
+    status
+    sentAt
+  }
+}

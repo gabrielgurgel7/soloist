@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "soloist-crm-16aa4",
+    "soloist": "soloist-crm-16aa4"
+  },
+  "targets": {},
+  "etags": {}
+}

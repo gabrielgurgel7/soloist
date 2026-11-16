@@ -1,0 +1,319 @@
+# ============================================================================
+# SOLOIST CRM — MUTATIONS PROTEGIDAS (ZERO-TRUST & TRANSAÇÕES ACID)
+# Todas as mutações gravam `owner: { uid_expr: "auth.uid" }` e validam que o
+# registro pertence ao usuário autenticado antes de atualizar ou excluir.
+# ============================================================================
+
+# 1. Inicializar ou Atualizar Configurações e Perfil do Usuário (Upsert Seguro)
+mutation UpsertMySettings(
+  $email: String!
+  $userName: String!
+  $studioName: String!
+  $theme: String!
+  $defaultLocality: String!
+  $proposalValidityDays: Int!
+  $monthlyFixedCosts: Float!
+  $desiredMonthlySalary: Float!
+  $productiveHoursPerMonth: Int!
+  $defaultProfitMargin: Float!
+  $defaultComboDiscount: Float!
+  $urgencyUrgentMultiplier: Float!
+  $complexityMediumMultiplier: Float!
+  $complexityHighMultiplier: Float!
+  $segmentSmallBizMultiplier: Float!
+  $segmentLargeBizMultiplier: Float!
+  $extraRevisionRatePercent: Float!
+  $defaultProjectStatus: String!
+  $defaultRevisionsIncluded: Int!
+  $autoClassifyClientTicket: Boolean!
+  $premiumTicketThreshold: Float!
+) @auth(level: USER) {
+  user_upsert(
+    data: {
+      uid_expr: "auth.uid"
+      email: $email
+      userName: $userName
+      studioName: $studioName
+      theme: $theme
+      defaultLocality: $defaultLocality
+      proposalValidityDays: $proposalValidityDays
+      monthlyFixedCosts: $monthlyFixedCosts
+      desiredMonthlySalary: $desiredMonthlySalary
+      productiveHoursPerMonth: $productiveHoursPerMonth
+      defaultProfitMargin: $defaultProfitMargin
+      defaultComboDiscount: $defaultComboDiscount
+      urgencyUrgentMultiplier: $urgencyUrgentMultiplier
+      complexityMediumMultiplier: $complexityMediumMultiplier
+      complexityHighMultiplier: $complexityHighMultiplier
+      segmentSmallBizMultiplier: $segmentSmallBizMultiplier
+      segmentLargeBizMultiplier: $segmentLargeBizMultiplier
+      extraRevisionRatePercent: $extraRevisionRatePercent
+      defaultProjectStatus: $defaultProjectStatus
+      defaultRevisionsIncluded: $defaultRevisionsIncluded
+      autoClassifyClientTicket: $autoClassifyClientTicket
+      premiumTicketThreshold: $premiumTicketThreshold
+      updatedAt_expr: "request.time"
+    }
+  )
+}
+
+# 2. Criar Novo Preset de Serviço no Catálogo
+mutation CreateCatalogService(
+  $title: String!
+  $description: String!
+  $category: String!
+  $price: Float!
+  $estimatedHours: Int!
+  $revisionsIncluded: Int!
+  $complexity: String!
+) @auth(level: USER) {
+  catalogService_insert(
+    data: {
+      owner: { uid_expr: "auth.uid" }
+      title: $title
+      description: $description
+      category: $category
+      price: $price
+      estimatedHours: $estimatedHours
+      revisionsIncluded: $revisionsIncluded
+      complexity: $complexity
+      timesRequested: 1
+    }
+  )
+}
+
+# 3. Incrementar Procura de um Preset de Serviço (Somente do Próprio Usuário)
+mutation IncrementServiceDemand($id: UUID!) @auth(level: USER) {
+  catalogService_update(
+    first: {
+      where: {
+        id: { eq: $id }
+        owner: { uid: { eq_expr: "auth.uid" } }
+      }
+    }
+    data: {
+      timesRequested_update: { inc: 1 }
+      updatedAt_expr: "request.time"
+    }
+  )
+}
+
+# 4. Criar Cliente na Carteira do Usuário
+mutation CreateClient(
+  $name: String!
+  $company: String
+  $email: String!
+  $phone: String
+  $ticket: String!
+  $status: String!
+  $lastContact: String
+) @auth(level: USER) {
+  client_insert(
+    data: {
+      owner: { uid_expr: "auth.uid" }
+      name: $name
+      company: $company
+      email: $email
+      phone: $phone
+      ticket: $ticket
+      status: $status
+      lastContact: $lastContact
+    }
+  )
+}
+
+# 5. Mover Status ou Atualizar Ticket do Cliente no Kanban (Somente Dono)
+mutation UpdateClientStatus(
+  $id: UUID!
+  $status: String!
+  $ticket: String
+  $lastContact: String
+) @auth(level: USER) {
+  client_update(
+    first: {
+      where: {
+        id: { eq: $id }
+        owner: { uid: { eq_expr: "auth.uid" } }
+      }
+    }
+    data: {
+      status: $status
+      ticket: $ticket
+      lastContact: $lastContact
+      updatedAt_expr: "request.time"
+    }
+  )
+}
+
+# 6. Criar Projeto no Kanban do Usuário
+mutation CreateProject(
+  $name: String!
+  $clientId: UUID
+  $clientName: String!
+  $status: String!
+  $type: String!
+  $value: Float!
+  $isPaid: Boolean
+) @auth(level: USER) {
+  project_insert(
+    data: {
+      owner: { uid_expr: "auth.uid" }
+      clientId: $clientId
+      clientName: $clientName
+      name: $name
+      status: $status
+      type: $type
+      value: $value
+      isPaid: $isPaid
+    }
+  )
+}
+
+# 7. Mover Projeto de Coluna ou Confirmar Recebimento (isPaid) no Kanban
+mutation UpdateProjectKanban(
+  $id: UUID!
+  $status: String
+  $isPaid: Boolean
+) @auth(level: USER) {
+  project_update(
+    first: {
+      where: {
+        id: { eq: $id }
+        owner: { uid: { eq_expr: "auth.uid" } }
+      }
+    }
+    data: {
+      status: $status
+      isPaid: $isPaid
+      updatedAt_expr: "request.time"
+    }
+  )
+}
+
+# 8. Transação Atômica ACID: Fechar Orçamento/Combo + Criar Cliente + Criar Projeto + Salvar Histórico
+mutation CloseComboOrderTransaction(
+  $clientName: String!
+  $clientCompany: String
+  $clientEmail: String!
+  $clientPhone: String
+  $clientTicket: String!
+  $clientStatus: String!
+  $lastContact: String!
+  $projectName: String!
+  $projectType: String!
+  $projectStatus: String!
+  $finalPrice: Float!
+  $serviceTitles: [String!]!
+  $discountPercent: Float!
+  $totalHours: Int!
+  $totalRevisions: Int!
+) @auth(level: USER) @transaction {
+  client_insert(
+    data: {
+      id_expr: "uuidV4()"
+      owner: { uid_expr: "auth.uid" }
+      name: $clientName
+      company: $clientCompany
+      email: $clientEmail
+      phone: $clientPhone
+      ticket: $clientTicket
+      status: $clientStatus
+      lastContact: $lastContact
+    }
+  )
+  project_insert(
+    data: {
+      owner: { uid_expr: "auth.uid" }
+      clientId_expr: "response.client_insert.id"
+      clientName: $clientName
+      name: $projectName
+      status: $projectStatus
+      type: $projectType
+      value: $finalPrice
+      isPaid: false
+    }
+  )
+  serviceCombo_insert(
+    data: {
+      owner: { uid_expr: "auth.uid" }
+      comboName: $projectName
+      serviceTitles: $serviceTitles
+      discountPercent: $discountPercent
+      totalHours: $totalHours
+      totalRevisions: $totalRevisions
+      finalPrice: $finalPrice
+      lastClientName: $clientName
+      timesReused: 1
+    }
+  )
+}
+
+# 9. Excluir Combo do Histórico (Somente Dono)
+mutation DeleteServiceCombo($id: UUID!) @auth(level: USER) {
+  serviceCombo_delete(
+    first: {
+      where: {
+        id: { eq: $id }
+        owner: { uid: { eq_expr: "auth.uid" } }
+      }
+    }
+  )
+}
+
+# 10. Salvar ou Atualizar Template de E-mail Personalizado
+mutation SaveEmailTemplate(
+  $name: String!
+  $category: String!
+  $subject: String!
+  $greeting: String!
+  $body: String!
+  $ctaLabel: String!
+  $ctaUrl: String!
+  $signature: String!
+  $visualTheme: String!
+) @auth(level: USER) {
+  emailTemplate_insert(
+    data: {
+      owner: { uid_expr: "auth.uid" }
+      name: $name
+      category: $category
+      subject: $subject
+      greeting: $greeting
+      body: $body
+      ctaLabel: $ctaLabel
+      ctaUrl: $ctaUrl
+      signature: $signature
+      visualTheme: $visualTheme
+    }
+  )
+}
+
+# 11. Registrar Envio ou Rascunho de E-mail no Histórico
+mutation RecordSentEmail(
+  $clientId: UUID
+  $projectId: UUID
+  $templateName: String!
+  $category: String!
+  $recipientName: String!
+  $recipientEmail: String!
+  $projectName: String
+  $subject: String!
+  $renderedBody: String!
+  $status: String!
+) @auth(level: USER) {
+  sentEmail_insert(
+    data: {
+      owner: { uid_expr: "auth.uid" }
+      clientId: $clientId
+      projectId: $projectId
+      templateName: $templateName
+      category: $category
+      recipientName: $recipientName
+      recipientEmail: $recipientEmail
+      projectName: $projectName
+      subject: $subject
+      renderedBody: $renderedBody
+      status: $status
+    }
+  )
+}

@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "soloist-crm-16aa4-service"
+location: "southamerica-east1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "soloist-crm-16aa4-database"
+      cloudSql:
+        instanceId: "soloist-crm-16aa4-instance"
+      schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]

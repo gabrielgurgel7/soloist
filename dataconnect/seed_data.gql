@@ -1,0 +1,17 @@
+# ============================================================================
+# DADOS DE SEED PARA TESTE LOCAL NO EMULADOR POSTGRESQL (PGLITE)
+# ============================================================================
+
+mutation SeedSoloistDemo @transaction {
+  user_upsert(
+    data: {
+      uid: "demo-soloist-uid"
+      email: "gabriel@soloist.app"
+      userName: "Gabriel Gurgel"
+      studioName: "Soloist Studio"
+      theme: "dark"
+      defaultLocality: "São Paulo - SP"
+      proposalValidityDays: 10
+    }
+  )
+}

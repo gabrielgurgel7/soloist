@@ -8,10 +8,16 @@
     "build": "tsc -b && vite build",
     "build-preview": "vite build --watch",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:compile": "npx -y firebase-tools@latest dataconnect:compile",
+    "db:sdk": "npx -y firebase-tools@latest dataconnect:sdk:generate",
+    "db:emulator": "npx -y firebase-tools@latest emulators:start --only auth,dataconnect",
+    "db:deploy": "npx -y firebase-tools@latest deploy --only dataconnect"
   },
   "dependencies": {
+    "@soloist/dataconnect": "file:src/lib/dataconnect-sdk",
     "@tailwindcss/vite": "^4.3.1",
+    "firebase": "^13.3.0",
     "lucide-react": "^1.21.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",

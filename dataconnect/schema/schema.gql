@@ -1,0 +1,135 @@
+# ============================================================================
+# SOLOIST CRM — SCHEMA POSTGRESQL (FIREBASE SQL CONNECT)
+# Região recomendada: southamerica-east1 (São Paulo - Conformidade LGPD)
+# Isolamento Multi-Tenant: Todas as entidades pertencem a um `owner: User!`
+# ============================================================================
+
+type User @table(name: "users", key: "uid") {
+  uid: String! @default(expr: "auth.uid")
+  email: String! @unique
+  userName: String! @default(value: "Gabriel Gurgel")
+  studioName: String! @default(value: "Soloist Studio")
+  theme: String! @default(value: "dark")
+  defaultLocality: String! @default(value: "São Paulo - SP")
+  proposalValidityDays: Int! @default(value: 10)
+
+  # Configurações Financeiras e Hora Técnica
+  monthlyFixedCosts: Float! @default(value: 1500.0)
+  desiredMonthlySalary: Float! @default(value: 4500.0)
+  productiveHoursPerMonth: Int! @default(value: 140)
+  defaultProfitMargin: Float! @default(value: 30.0)
+  defaultComboDiscount: Float! @default(value: 10.0)
+
+  # Multiplicadores de Orçamento
+  urgencyUrgentMultiplier: Float! @default(value: 1.3)
+  complexityMediumMultiplier: Float! @default(value: 1.15)
+  complexityHighMultiplier: Float! @default(value: 1.35)
+  segmentSmallBizMultiplier: Float! @default(value: 1.1)
+  segmentLargeBizMultiplier: Float! @default(value: 1.25)
+  extraRevisionRatePercent: Float! @default(value: 5.0)
+
+  # Regras de Automação do CRM & Kanban
+  defaultProjectStatus: String! @default(value: "Em andamento")
+  defaultRevisionsIncluded: Int! @default(value: 2)
+  autoClassifyClientTicket: Boolean! @default(value: true)
+  premiumTicketThreshold: Float! @default(value: 5000.0)
+
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type CatalogService @table(name: "catalog_services") {
+  id: UUID! @default(expr: "uuidV4()")
+  owner: User!
+  title: String!
+  description: String!
+  category: String! @default(value: "Geral") @index
+  price: Float!
+  estimatedHours: Int! @default(value: 10)
+  revisionsIncluded: Int! @default(value: 2)
+  complexity: String! @default(value: "média")
+  timesRequested: Int! @default(value: 1) @index
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type Client @table(name: "clients") {
+  id: UUID! @default(expr: "uuidV4()")
+  owner: User!
+  name: String!
+  company: String
+  email: String!
+  phone: String
+  birthDate: String
+  ticket: String! @default(value: "Médio")
+  status: String! @default(value: "Ativo") @index
+  lastContact: String
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type Project @table(name: "projects") {
+  id: UUID! @default(expr: "uuidV4()")
+  owner: User!
+  client: Client
+  clientName: String!
+  name: String!
+  status: String! @default(value: "Em andamento") @index
+  type: String! @default(value: "Geral")
+  value: Float!
+  isPaid: Boolean! @default(value: false)
+  startDate: String
+  deadline: String
+  createdAt: Timestamp! @default(expr: "request.time")
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type ServiceCombo @table(name: "service_combos") {
+  id: UUID! @default(expr: "uuidV4()")
+  owner: User!
+  comboName: String!
+  serviceTitles: [String!]!
+  discountPercent: Float! @default(value: 0.0)
+  totalHours: Int!
+  totalRevisions: Int!
+  finalPrice: Float!
+  lastClientName: String!
+  timesReused: Int! @default(value: 1)
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type ServiceComboItem @table(name: "service_combo_items", key: ["combo", "service"]) {
+  combo: ServiceCombo!
+  service: CatalogService!
+}
+
+type EmailTemplate @table(name: "email_templates") {
+  id: UUID! @default(expr: "uuidV4()")
+  owner: User!
+  name: String!
+  category: String! @default(value: "Proposta") @index
+  subject: String!
+  greeting: String!
+  body: String!
+  ctaLabel: String!
+  ctaUrl: String!
+  signature: String!
+  visualTheme: String! @default(value: "soloist-dark")
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type SentEmail @table(name: "sent_emails") {
+  id: UUID! @default(expr: "uuidV4()")
+  owner: User!
+  client: Client
+  project: Project
+  templateName: String!
+  category: String!
+  recipientName: String!
+  recipientEmail: String!
+  projectName: String
+  subject: String!
+  renderedBody: String!
+  status: String! @default(value: "Enviado")
+  sentAt: Timestamp! @default(expr: "request.time") @index
+}
