@@ -40,17 +40,33 @@ export const SOLOIST_DATACONNECT_CONFIG = {
   authEmulatorPort: 9099,
 } as const;
 
+function cleanEnvValue(val: string | undefined, fallback = ""): string {
+  if (!val) return fallback;
+  return val
+    .trim()
+    .replace(/[,;]+$/, "")
+    .trim()
+    .replace(/^["']+|["']+$/g, "")
+    .trim();
+}
+
 export function getFirebaseEnvConfig(): SoloistFirebaseEnvConfig {
   const env = import.meta.env;
   return {
-    apiKey: env.VITE_FIREBASE_API_KEY || "demo-soloist-api-key",
-    authDomain:
-      env.VITE_FIREBASE_AUTH_DOMAIN || "soloist-crm-16aa4.firebaseapp.com",
-    projectId: env.VITE_FIREBASE_PROJECT_ID || "soloist-crm-16aa4",
-    storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: env.VITE_FIREBASE_APP_ID,
-    useEmulator: env.VITE_USE_FIREBASE_EMULATOR === "true",
+    apiKey: cleanEnvValue(env.VITE_FIREBASE_API_KEY, "demo-soloist-api-key"),
+    authDomain: cleanEnvValue(
+      env.VITE_FIREBASE_AUTH_DOMAIN,
+      "soloist-crm-16aa4.firebaseapp.com",
+    ),
+    projectId: cleanEnvValue(
+      env.VITE_FIREBASE_PROJECT_ID,
+      "soloist-crm-16aa4",
+    ),
+    storageBucket: cleanEnvValue(env.VITE_FIREBASE_STORAGE_BUCKET) || undefined,
+    messagingSenderId:
+      cleanEnvValue(env.VITE_FIREBASE_MESSAGING_SENDER_ID) || undefined,
+    appId: cleanEnvValue(env.VITE_FIREBASE_APP_ID) || undefined,
+    useEmulator: cleanEnvValue(env.VITE_USE_FIREBASE_EMULATOR) === "true",
   };
 }
 
@@ -58,6 +74,7 @@ let firebaseAppInstance: FirebaseApp | null = null;
 let firebaseAuthInstance: Auth | null = null;
 let dataConnectInstance: DataConnect | null = null;
 let emulatorsConnected = false;
+let initializedApiKey = "";
 
 export function getSoloistFirebase(): {
   app: FirebaseApp;
@@ -66,17 +83,25 @@ export function getSoloistFirebase(): {
 } {
   const cfg = getFirebaseEnvConfig();
 
-  if (!firebaseAppInstance) {
+  if (!firebaseAppInstance || initializedApiKey !== cfg.apiKey) {
+    const appName = `soloist-${cfg.apiKey.slice(-6) || "default"}`;
+    const existing = getApps().find((a) => a.name === appName);
     firebaseAppInstance =
-      getApps()[0] ??
-      initializeApp({
-        apiKey: cfg.apiKey,
-        authDomain: cfg.authDomain,
-        projectId: cfg.projectId,
-        storageBucket: cfg.storageBucket,
-        messagingSenderId: cfg.messagingSenderId,
-        appId: cfg.appId,
-      });
+      existing ??
+      initializeApp(
+        {
+          apiKey: cfg.apiKey,
+          authDomain: cfg.authDomain,
+          projectId: cfg.projectId,
+          storageBucket: cfg.storageBucket,
+          messagingSenderId: cfg.messagingSenderId,
+          appId: cfg.appId,
+        },
+        appName,
+      );
+    firebaseAuthInstance = getAuth(firebaseAppInstance);
+    dataConnectInstance = getDataConnect(firebaseAppInstance, connectorConfig);
+    initializedApiKey = cfg.apiKey;
   }
 
   if (!firebaseAuthInstance) {
