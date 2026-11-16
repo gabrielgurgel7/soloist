@@ -45,6 +45,10 @@ import {
   getStoredSettings,
   syncOrderWithClientsAndProjects,
 } from "../services/crmStorage";
+import {
+  pushNewServiceToPostgres,
+  pushComboOrderTransactionToPostgres,
+} from "../lib/firebase";
 
 type PresetsLayoutMode = "cards" | "grid" | "compact";
 type MobileServicesTab = "todas" | "presets" | "combos" | "carrinho" | "demanda";
@@ -111,12 +115,18 @@ export function ServicesPage() {
   const [mobileTab, setMobileTab] = useState<MobileServicesTab>("todas");
 
   useEffect(() => {
-    saveStoredServices(services);
-  }, [services]);
-
-  useEffect(() => {
-    saveStoredCombos(combosHistory);
-  }, [combosHistory]);
+    function reloadFromAccount() {
+      const latestClients = getStoredClients();
+      setServices(getStoredServices());
+      setCombosHistory(getStoredCombos());
+      setClients(latestClients);
+      setSelectedClientId(latestClients[0]?.id ?? "");
+      setClientMode(latestClients.length > 0 ? "existing" : "new");
+    }
+    window.addEventListener("soloist-auth-changed", reloadFromAccount);
+    return () =>
+      window.removeEventListener("soloist-auth-changed", reloadFromAccount);
+  }, []);
 
   // Cálculos da combinação atual no carrinho
   const selectedServices = services.filter((s) =>
@@ -188,7 +198,12 @@ export function ServicesPage() {
       complexity: quote.complexity,
       timesRequested: 1,
     };
-    setServices((prev) => [newService, ...prev]);
+    setServices((prev) => {
+      const next = [newService, ...prev];
+      saveStoredServices(next);
+      return next;
+    });
+    pushNewServiceToPostgres(newService).catch(() => undefined);
     setSelectedServiceIds((prev) => [...prev, newService.id]);
     setIsNewServiceFormOpen(false);
   }
@@ -204,15 +219,21 @@ export function ServicesPage() {
     setComboDiscount(combo.discountPercent);
     setOrderSuccessBanner(null);
 
-    setCombosHistory((prev) =>
-      prev.map((c) =>
+    setCombosHistory((prev) => {
+      const next = prev.map((c) =>
         c.id === combo.id ? { ...c, timesReused: c.timesReused + 1 } : c,
-      ),
-    );
+      );
+      saveStoredCombos(next);
+      return next;
+    });
   }
 
   function handleDeleteCombo(comboId: string) {
-    setCombosHistory((prev) => prev.filter((c) => c.id !== comboId));
+    setCombosHistory((prev) => {
+      const next = prev.filter((c) => c.id !== comboId);
+      saveStoredCombos(next);
+      return next;
+    });
   }
 
   // Handlers de Drag and Drop para o Carrinho Cinematográfico
@@ -310,13 +331,15 @@ export function ServicesPage() {
 
     setClients(getStoredClients());
 
-    setServices((prev) =>
-      prev.map((srv) =>
+    setServices((prev) => {
+      const next = prev.map((srv) =>
         selectedServiceIds.includes(srv.id)
           ? { ...srv, timesRequested: srv.timesRequested + 1 }
           : srv,
-      ),
-    );
+      );
+      saveStoredServices(next);
+      return next;
+    });
 
     const today = new Date().toLocaleDateString("pt-BR");
     const newComboRecord: ServiceComboHistory = {
@@ -332,7 +355,29 @@ export function ServicesPage() {
       createdAt: today,
       timesReused: 1,
     };
-    setCombosHistory((prev) => [newComboRecord, ...prev]);
+    setCombosHistory((prev) => {
+      const next = [newComboRecord, ...prev];
+      saveStoredCombos(next);
+      return next;
+    });
+
+    pushComboOrderTransactionToPostgres({
+      clientName: client.name,
+      clientCompany: client.company,
+      clientEmail: client.email,
+      clientPhone: client.phone,
+      clientTicket: client.ticket,
+      clientStatus: client.status,
+      lastContact: today,
+      projectName: project.name,
+      projectType,
+      projectStatus,
+      finalPrice: finalComboPrice,
+      serviceTitles: newComboRecord.serviceTitles,
+      discountPercent: comboDiscount,
+      totalHours,
+      totalRevisions,
+    }).catch(() => undefined);
 
     setOrderSuccessBanner({
       projectName: project.name,

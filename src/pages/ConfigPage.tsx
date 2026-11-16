@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Calculator,
   ShoppingCart,
@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Zap,
   ClipboardList,
+  Lock,
 } from "lucide-react";
 import { SendButton } from "../components/buttons/Buttons";
 import { BaseCard } from "../components/cards/BaseCard";
@@ -27,35 +28,81 @@ import {
   getStoredProjects,
   getStoredSettings,
   saveStoredSettings,
+  isUserAuthenticated,
+  getActiveSessionUser,
 } from "../services/crmStorage";
+import { pushSettingsToPostgres } from "../lib/firebase";
 
 export function ConfigPage() {
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(() =>
+    isUserAuthenticated(),
+  );
   const [appSettings, setAppSettings] = useState(() => getStoredSettings());
-
-  // Dados reais do ecossistema Soloist para exibir na Landing Page
-  const services = getStoredServices();
-  const combos = getStoredCombos();
-  const clients = getStoredClients();
-  const projects = getStoredProjects();
+  const [services, setServices] = useState(() => getStoredServices());
+  const [combos, setCombos] = useState(() => getStoredCombos());
+  const [clients, setClients] = useState(() => getStoredClients());
+  const [projects, setProjects] = useState(() => getStoredProjects());
 
   // Simulador rápido de Valores de Referência (Custo/Hora Base)
   const [monthlyCosts, setMonthlyCosts] = useState<number>(
-    () => appSettings.monthlyFixedCosts,
+    () => getStoredSettings().monthlyFixedCosts,
   );
   const [desiredSalary, setDesiredSalary] = useState<number>(
-    () => appSettings.desiredMonthlySalary,
+    () => getStoredSettings().desiredMonthlySalary,
   );
   const [productiveHours, setProductiveHours] = useState<number>(
-    () => appSettings.productiveHoursPerMonth,
+    () => getStoredSettings().productiveHoursPerMonth,
   );
   const [savedReference, setSavedReference] = useState(false);
 
-  const calculatedHourlyRate =
-    productiveHours > 0 ? (monthlyCosts + desiredSalary) / productiveHours : 0;
+  useEffect(() => {
+    function syncAll() {
+      const authNow = isUserAuthenticated();
+      const latestSettings = getStoredSettings();
+      setIsAuthenticated(authNow);
+      setAppSettings(latestSettings);
+      setServices(getStoredServices());
+      setCombos(getStoredCombos());
+      setClients(getStoredClients());
+      setProjects(getStoredProjects());
+      setMonthlyCosts(latestSettings.monthlyFixedCosts);
+      setDesiredSalary(latestSettings.desiredMonthlySalary);
+      setProductiveHours(latestSettings.productiveHoursPerMonth);
+    }
 
-  function handleSaveReference(event: React.FormEvent<HTMLFormElement>) {
+    window.addEventListener("soloist-auth-changed", syncAll);
+    window.addEventListener("soloist-crm-updated", syncAll);
+    window.addEventListener("soloist-settings-updated", syncAll);
+    return () => {
+      window.removeEventListener("soloist-auth-changed", syncAll);
+      window.removeEventListener("soloist-crm-updated", syncAll);
+      window.removeEventListener("soloist-settings-updated", syncAll);
+    };
+  }, []);
+
+  const calculatedHourlyRate =
+    isAuthenticated && productiveHours > 0
+      ? (monthlyCosts + desiredSalary) / productiveHours
+      : 0;
+
+  function openLoginIfUnauthenticated(): boolean {
+    if (!isAuthenticated) {
+      window.dispatchEvent(new Event("soloist-open-login"));
+      return true;
+    }
+    return false;
+  }
+
+  function handleProtectedNavigate(path: string) {
+    if (openLoginIfUnauthenticated()) return;
+    navigate(path);
+  }
+
+  async function handleSaveReference(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (openLoginIfUnauthenticated()) return;
+
     const updated = {
       ...getStoredSettings(),
       monthlyFixedCosts: monthlyCosts,
@@ -64,11 +111,18 @@ export function ConfigPage() {
     };
     saveStoredSettings(updated);
     setAppSettings(updated);
+    await pushSettingsToPostgres(updated).catch(() => undefined);
     setSavedReference(true);
     setTimeout(() => setSavedReference(false), 3000);
   }
 
-  const firstName = appSettings.userName.trim().split(" ")[0] || "Gabriel";
+  const sessionUser = getActiveSessionUser();
+  const rawName =
+    appSettings.userName.trim() ||
+    sessionUser?.displayName?.trim() ||
+    sessionUser?.email?.split("@")[0] ||
+    "";
+  const firstName = isAuthenticated && rawName ? rawName.split(" ")[0] : "";
 
   return (
     <div className="flex flex-col gap-4 sm:gap-6 max-w-6xl w-full mx-auto">
@@ -81,7 +135,9 @@ export function ConfigPage() {
           </div>
 
           <h2 className="text-3xl sm:text-5xl text-pistache-solar font-semibold font-sora leading-tight">
-            Bem vindo, {firstName}!
+            {isAuthenticated && firstName
+              ? `Bem vindo, ${firstName}!`
+              : "Bem vindo!"}
           </h2>
 
           <p className="text-neutral-50 text-sm sm:text-lg max-w-xl font-inter">
@@ -109,11 +165,12 @@ export function ConfigPage() {
           {/* Chamada para Ação Original */}
           <div className="flex flex-wrap items-center gap-4 pt-2">
             <div
-              onClick={() => navigate("/services")}
+              onClick={() => handleProtectedNavigate("/services")}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") navigate("/services");
+                if (e.key === "Enter" || e.key === " ")
+                  handleProtectedNavigate("/services");
               }}
               className="flex items-center justify-around backdrop-blur-md bg-green-950/60 hover:bg-green-900/70 border border-white/10 hover:border-pistache-solar/50 w-4xs pl-5 pr-1 py-1 rounded-full cursor-pointer transition-all"
             >
@@ -153,7 +210,9 @@ export function ConfigPage() {
             </p>
           </div>
           <span className="text-xs text-amber-50 bg-neutral-900/80 border border-white/10 px-3 py-1.5 rounded-full self-start sm:self-auto">
-            Ecossistema 100% conectado
+            {isAuthenticated
+              ? "Conta sincronizada com PostgreSQL"
+              : "Faça login para desbloquear"}
           </span>
         </div>
 
@@ -177,12 +236,21 @@ export function ConfigPage() {
                 <span className="text-pistache-solar font-semibold">
                   {services.length} serviços no catálogo
                 </span>
-                <Link
-                  to="/services"
-                  className="inline-flex items-center gap-1 text-amber-50 hover:text-pistache-solar"
+                <button
+                  type="button"
+                  onClick={() => handleProtectedNavigate("/services")}
+                  className="inline-flex items-center gap-1 text-amber-50 hover:text-pistache-solar cursor-pointer"
                 >
-                  Abrir <ArrowUpRight size={13} />
-                </Link>
+                  {isAuthenticated ? (
+                    <>
+                      Abrir <ArrowUpRight size={13} />
+                    </>
+                  ) : (
+                    <>
+                      <Lock size={12} /> Login
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </BaseCard>
@@ -206,12 +274,21 @@ export function ConfigPage() {
                 <span className="text-pistache-solar font-semibold">
                   {combos.length} combos reutilizáveis
                 </span>
-                <Link
-                  to="/services"
-                  className="inline-flex items-center gap-1 text-amber-50 hover:text-pistache-solar"
+                <button
+                  type="button"
+                  onClick={() => handleProtectedNavigate("/services")}
+                  className="inline-flex items-center gap-1 text-amber-50 hover:text-pistache-solar cursor-pointer"
                 >
-                  Montar <ArrowUpRight size={13} />
-                </Link>
+                  {isAuthenticated ? (
+                    <>
+                      Montar <ArrowUpRight size={13} />
+                    </>
+                  ) : (
+                    <>
+                      <Lock size={12} /> Login
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </BaseCard>
@@ -235,12 +312,21 @@ export function ConfigPage() {
                 <span className="text-pistache-solar font-semibold">
                   {projects.length} projetos registrados
                 </span>
-                <Link
-                  to="/projects"
-                  className="inline-flex items-center gap-1 text-amber-50 hover:text-pistache-solar"
+                <button
+                  type="button"
+                  onClick={() => handleProtectedNavigate("/projects")}
+                  className="inline-flex items-center gap-1 text-amber-50 hover:text-pistache-solar cursor-pointer"
                 >
-                  Ver quadro <ArrowUpRight size={13} />
-                </Link>
+                  {isAuthenticated ? (
+                    <>
+                      Ver quadro <ArrowUpRight size={13} />
+                    </>
+                  ) : (
+                    <>
+                      <Lock size={12} /> Login
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </BaseCard>
@@ -264,12 +350,21 @@ export function ConfigPage() {
                 <span className="text-pistache-solar font-semibold">
                   {clients.length} clientes na carteira
                 </span>
-                <Link
-                  to="/clients"
-                  className="inline-flex items-center gap-1 text-amber-50 hover:text-pistache-solar"
+                <button
+                  type="button"
+                  onClick={() => handleProtectedNavigate("/clients")}
+                  className="inline-flex items-center gap-1 text-amber-50 hover:text-pistache-solar cursor-pointer"
                 >
-                  Gerenciar <ArrowUpRight size={13} />
-                </Link>
+                  {isAuthenticated ? (
+                    <>
+                      Gerenciar <ArrowUpRight size={13} />
+                    </>
+                  ) : (
+                    <>
+                      <Lock size={12} /> Login
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </BaseCard>
@@ -304,8 +399,9 @@ export function ConfigPage() {
               className="flex flex-col gap-3 p-2"
             >
               <p className="text-xs text-neutral-300 font-inter">
-                Defina seus custos mensais e horas produtivas para descobrir seu
-                custo/hora ideal nos orçamentos.
+                {isAuthenticated
+                  ? "Defina seus custos mensais e horas produtivas para descobrir seu custo/hora ideal nos orçamentos."
+                  : "Faça login na sua conta para configurar e salvar sua hora técnica base no banco de dados."}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -322,11 +418,12 @@ export function ConfigPage() {
                       id="monthlyCosts"
                       type="number"
                       min="0"
-                      value={monthlyCosts}
+                      disabled={!isAuthenticated}
+                      value={isAuthenticated ? monthlyCosts : 0}
                       onChange={(e) =>
                         setMonthlyCosts(Number(e.target.value) || 0)
                       }
-                      className="text-pistache-solar outline-none bg-transparent w-full text-sm"
+                      className="text-pistache-solar outline-none bg-transparent w-full text-sm disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -344,11 +441,12 @@ export function ConfigPage() {
                       id="desiredSalary"
                       type="number"
                       min="0"
-                      value={desiredSalary}
+                      disabled={!isAuthenticated}
+                      value={isAuthenticated ? desiredSalary : 0}
                       onChange={(e) =>
                         setDesiredSalary(Number(e.target.value) || 0)
                       }
-                      className="text-pistache-solar outline-none bg-transparent w-full text-sm"
+                      className="text-pistache-solar outline-none bg-transparent w-full text-sm disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -368,11 +466,12 @@ export function ConfigPage() {
                     type="number"
                     min="1"
                     max="300"
-                    value={productiveHours}
+                    disabled={!isAuthenticated}
+                    value={isAuthenticated ? productiveHours : 0}
                     onChange={(e) =>
                       setProductiveHours(Number(e.target.value) || 1)
                     }
-                    className="text-pistache-solar outline-none bg-transparent w-full text-sm"
+                    className="text-pistache-solar outline-none bg-transparent w-full text-sm disabled:opacity-50"
                   />
                   <span className="text-pistache-solar text-xs">horas/mês</span>
                 </div>
@@ -396,9 +495,16 @@ export function ConfigPage() {
                 </div>
                 <button
                   type="submit"
-                  className="bg-pistache-solar text-neutral-900 font-bold text-xs px-4 py-2 rounded-full cursor-pointer hover:brightness-105 active:scale-95 transition-all"
+                  className="inline-flex items-center gap-1.5 bg-pistache-solar text-neutral-900 font-bold text-xs px-4 py-2 rounded-full cursor-pointer hover:brightness-105 active:scale-95 transition-all"
                 >
-                  Salvar Referência
+                  {isAuthenticated ? (
+                    <span>Salvar Referência</span>
+                  ) : (
+                    <>
+                      <Lock size={12} />
+                      <span>Fazer Login para Salvar</span>
+                    </>
+                  )}
                 </button>
               </div>
 
@@ -406,7 +512,7 @@ export function ConfigPage() {
                 <div className="flex items-center gap-1.5 text-xs text-pistache-solar bg-emerald-900/70 border border-pistache-solar/40 rounded-xl px-3 py-2">
                   <CheckCircle2 size={14} />
                   <span>
-                    Hora técnica salva como referência para novos serviços!
+                    Hora técnica salva na sua conta e sincronizada com o banco!
                   </span>
                 </div>
               )}

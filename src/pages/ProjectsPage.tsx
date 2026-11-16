@@ -15,6 +15,10 @@ import {
   saveStoredProjects,
   pushActivityNotification,
 } from "../services/crmStorage";
+import {
+  pushNewProjectToPostgres,
+  pushProjectKanbanToPostgres,
+} from "../lib/firebase";
 
 const PROJECT_COLUMNS: ProjectStatus[] = [
   "Em andamento",
@@ -46,8 +50,13 @@ export function ProjectsPage() {
   });
 
   useEffect(() => {
-    saveStoredProjects(projects);
-  }, [projects]);
+    function reloadFromAccount() {
+      setProjects(getStoredProjects());
+    }
+    window.addEventListener("soloist-auth-changed", reloadFromAccount);
+    return () =>
+      window.removeEventListener("soloist-auth-changed", reloadFromAccount);
+  }, []);
 
   function moveProjectToStatus(projectId: string, targetStatus: ProjectStatus) {
     const targetProj = projects.find((p) => p.id === projectId);
@@ -64,12 +73,17 @@ export function ProjectsPage() {
       });
     }
 
-    setProjects((prev) =>
-      prev.map((project) =>
+    setProjects((prev) => {
+      const next = prev.map((project) =>
         project.id === projectId
           ? { ...project, status: targetStatus }
           : project,
-      ),
+      );
+      saveStoredProjects(next);
+      return next;
+    });
+    pushProjectKanbanToPostgres(projectId, { status: targetStatus }).catch(
+      () => undefined,
     );
   }
 
@@ -139,7 +153,12 @@ export function ProjectsPage() {
       status: addingToStatus,
     };
 
-    setProjects((prev) => [created, ...prev]);
+    setProjects((prev) => {
+      const next = [created, ...prev];
+      saveStoredProjects(next);
+      return next;
+    });
+    pushNewProjectToPostgres(created).catch(() => undefined);
     setNewProject({ name: "", client: "", type: "", value: "" });
     setAddingToStatus(null);
   }
@@ -253,15 +272,21 @@ export function ProjectsPage() {
                           onChangeStatus={(newStatus) =>
                             moveProjectToStatus(project.id, newStatus)
                           }
-                          onTogglePaid={() =>
-                            setProjects((prev) =>
-                              prev.map((p) =>
+                          onTogglePaid={() => {
+                            const nextPaid = !project.isPaid;
+                            setProjects((prev) => {
+                              const next = prev.map((p) =>
                                 p.id === project.id
-                                  ? { ...p, isPaid: !p.isPaid }
+                                  ? { ...p, isPaid: nextPaid }
                                   : p,
-                              ),
-                            )
-                          }
+                              );
+                              saveStoredProjects(next);
+                              return next;
+                            });
+                            pushProjectKanbanToPostgres(project.id, {
+                              isPaid: nextPaid,
+                            }).catch(() => undefined);
+                          }}
                         />
                       </li>
                     );

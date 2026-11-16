@@ -6,39 +6,56 @@ import {
   Users,
   FolderKanban,
   Mail,
+  Lock,
   type LucideIcon,
 } from "lucide-react";
 import { LoginButton, NotifyButton, SettingsButton } from "../buttons/Buttons";
 import { LoginForm } from "../modals/LoginForm";
 import { SettingsModal } from "../modals/SettingsModal";
 import { NotificationsModal } from "../modals/NotificationsModal";
-import { getAllNotifications } from "../../services/crmStorage";
+import {
+  getAllNotifications,
+  isUserAuthenticated,
+} from "../../services/crmStorage";
 
 interface NavItem {
   label: string;
   mobileLabel: string;
   path: string;
   icon: LucideIcon;
+  requiresAuth: boolean;
 }
 
 export function AppHeader() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() =>
+    isUserAuthenticated(),
+  );
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(() =>
     getAllNotifications().some((n) => !n.isRead),
   );
   const location = useLocation();
 
   useEffect(() => {
-    function syncBadge() {
+    function syncState() {
+      setIsAuthenticated(isUserAuthenticated());
       setHasUnreadNotifications(getAllNotifications().some((n) => !n.isRead));
     }
-    window.addEventListener("soloist-crm-updated", syncBadge);
-    window.addEventListener("soloist-settings-updated", syncBadge);
+    function handleOpenLogin() {
+      setIsLoginOpen(true);
+    }
+
+    window.addEventListener("soloist-auth-changed", syncState);
+    window.addEventListener("soloist-crm-updated", syncState);
+    window.addEventListener("soloist-settings-updated", syncState);
+    window.addEventListener("soloist-open-login", handleOpenLogin);
     return () => {
-      window.removeEventListener("soloist-crm-updated", syncBadge);
-      window.removeEventListener("soloist-settings-updated", syncBadge);
+      window.removeEventListener("soloist-auth-changed", syncState);
+      window.removeEventListener("soloist-crm-updated", syncState);
+      window.removeEventListener("soloist-settings-updated", syncState);
+      window.removeEventListener("soloist-open-login", handleOpenLogin);
     };
   }, []);
 
@@ -48,32 +65,45 @@ export function AppHeader() {
       mobileLabel: "Início",
       path: "/configs",
       icon: SlidersHorizontal,
+      requiresAuth: false,
     },
     {
       label: "Serviços",
       mobileLabel: "Serviços",
       path: "/services",
       icon: Layers,
+      requiresAuth: true,
     },
     {
       label: "Clientes",
       mobileLabel: "Clientes",
       path: "/clients",
       icon: Users,
+      requiresAuth: true,
     },
     {
       label: "Projetos",
       mobileLabel: "Projetos",
       path: "/projects",
       icon: FolderKanban,
+      requiresAuth: true,
     },
     {
       label: "E-mails",
       mobileLabel: "E-mails",
       path: "/emails",
       icon: Mail,
+      requiresAuth: true,
     },
   ];
+
+  function handleProtectedAction(callback: () => void) {
+    if (!isAuthenticated) {
+      setIsLoginOpen(true);
+      return;
+    }
+    callback();
+  }
 
   return (
     <>
@@ -91,10 +121,16 @@ export function AppHeader() {
           <div className="inline-flex md:hidden gap-1.5">
             <LoginButton onClick={() => setIsLoginOpen(true)} />
             <NotifyButton
-              hasNotifications={hasUnreadNotifications}
-              onClick={() => setIsNotificationsOpen(true)}
+              hasNotifications={isAuthenticated && hasUnreadNotifications}
+              onClick={() =>
+                handleProtectedAction(() => setIsNotificationsOpen(true))
+              }
             />
-            <SettingsButton onClick={() => setIsSettingsOpen(true)} />
+            <SettingsButton
+              onClick={() =>
+                handleProtectedAction(() => setIsSettingsOpen(true))
+              }
+            />
           </div>
         </div>
 
@@ -102,21 +138,42 @@ export function AppHeader() {
         <nav className="grid grid-cols-5 md:inline-flex items-center gap-1 sm:gap-2 md:gap-3 text-amber-50 transition-colors w-full md:w-auto bg-neutral-900/40 md:bg-transparent p-1 md:p-0 rounded-full border border-white/10 md:border-0">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const isLocked = item.requiresAuth && !isAuthenticated;
             const isActive =
               location.pathname === item.path ||
               (item.path === "/configs" && location.pathname === "/");
             return (
               <Link
                 key={item.path}
-                to={item.path}
+                to={isLocked ? "/configs" : item.path}
+                onClick={(e) => {
+                  if (isLocked) {
+                    e.preventDefault();
+                    setIsLoginOpen(true);
+                  }
+                }}
+                title={
+                  isLocked
+                    ? `Faça login para acessar ${item.label}`
+                    : item.label
+                }
                 className={[
                   "inline-flex items-center justify-center gap-1.5 px-2 sm:px-3 py-1.5 md:py-1 rounded-full text-xs sm:text-sm transition-colors text-center truncate",
                   isActive
                     ? "bg-pistache-solar/20 text-pistache-solar font-bold border border-pistache-solar/40"
-                    : "hover:text-pistache-solar text-neutral-200 md:text-amber-50",
+                    : isLocked
+                      ? "text-neutral-400 hover:text-pistache-solar"
+                      : "hover:text-pistache-solar text-neutral-200 md:text-amber-50",
                 ].join(" ")}
               >
-                <Icon size={14} className="shrink-0 md:hidden lg:inline-block" />
+                {isLocked ? (
+                  <Lock size={12} className="shrink-0 opacity-75" />
+                ) : (
+                  <Icon
+                    size={14}
+                    className="shrink-0 md:hidden lg:inline-block"
+                  />
+                )}
                 <span className="md:hidden truncate">{item.mobileLabel}</span>
                 <span className="hidden md:inline">{item.label}</span>
               </Link>
@@ -128,10 +185,14 @@ export function AppHeader() {
         <div className="hidden md:inline-flex gap-2 shrink-0">
           <LoginButton onClick={() => setIsLoginOpen(true)} />
           <NotifyButton
-            hasNotifications={hasUnreadNotifications}
-            onClick={() => setIsNotificationsOpen(true)}
+            hasNotifications={isAuthenticated && hasUnreadNotifications}
+            onClick={() =>
+              handleProtectedAction(() => setIsNotificationsOpen(true))
+            }
           />
-          <SettingsButton onClick={() => setIsSettingsOpen(true)} />
+          <SettingsButton
+            onClick={() => handleProtectedAction(() => setIsSettingsOpen(true))}
+          />
         </div>
       </header>
 
@@ -146,7 +207,7 @@ export function AppHeader() {
         </div>
       )}
 
-      {isNotificationsOpen && (
+      {isNotificationsOpen && isAuthenticated && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setIsNotificationsOpen(false)}
@@ -162,7 +223,7 @@ export function AppHeader() {
         </div>
       )}
 
-      {isSettingsOpen && (
+      {isSettingsOpen && isAuthenticated && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setIsSettingsOpen(false)}

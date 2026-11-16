@@ -16,6 +16,10 @@ import {
   saveStoredClients,
   pushActivityNotification,
 } from "../services/crmStorage";
+import {
+  pushNewClientToPostgres,
+  pushClientStatusToPostgres,
+} from "../lib/firebase";
 
 const CLIENT_COLUMNS: { title: string; status: ClientStatus }[] = [
   { title: "Ativos", status: "Ativo" },
@@ -54,8 +58,13 @@ export function ClientsPage() {
   });
 
   useEffect(() => {
-    saveStoredClients(clients);
-  }, [clients]);
+    function reloadFromAccount() {
+      setClients(getStoredClients());
+    }
+    window.addEventListener("soloist-auth-changed", reloadFromAccount);
+    return () =>
+      window.removeEventListener("soloist-auth-changed", reloadFromAccount);
+  }, []);
 
   function moveClientToStatus(clientId: string, targetStatus: ClientStatus) {
     const movedClient = clients.find((c) => c.id === clientId);
@@ -69,11 +78,14 @@ export function ClientsPage() {
       });
     }
 
-    setClients((prev) =>
-      prev.map((client) =>
+    setClients((prev) => {
+      const next = prev.map((client) =>
         client.id === clientId ? { ...client, status: targetStatus } : client,
-      ),
-    );
+      );
+      saveStoredClients(next);
+      return next;
+    });
+    pushClientStatusToPostgres(clientId, targetStatus).catch(() => undefined);
   }
 
   function handleDragStart(event: DragEvent<HTMLLIElement>, clientId: string) {
@@ -141,7 +153,12 @@ export function ClientsPage() {
       status: addingToStatus,
     };
 
-    setClients((prev) => [created, ...prev]);
+    setClients((prev) => {
+      const next = [created, ...prev];
+      saveStoredClients(next);
+      return next;
+    });
+    pushNewClientToPostgres(created).catch(() => undefined);
     setNewClient({
       name: "",
       company: "",
