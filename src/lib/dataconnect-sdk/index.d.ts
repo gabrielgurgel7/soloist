@@ -86,6 +86,16 @@ export interface CreateProjectVariables {
   isPaid?: boolean | null;
 }
 
+export interface DeleteAllMyDataData {
+  sentEmail_deleteMany: number;
+  project_deleteMany: number;
+  serviceCombo_deleteMany: number;
+  client_deleteMany: number;
+  emailTemplate_deleteMany: number;
+  catalogService_deleteMany: number;
+  user_delete?: User_Key | null;
+}
+
 export interface DeleteServiceComboData {
   serviceCombo_delete?: ServiceCombo_Key | null;
 }
@@ -495,6 +505,18 @@ export const recordSentEmailRef: RecordSentEmailRef;
 
 export function recordSentEmail(vars: RecordSentEmailVariables): MutationPromise<RecordSentEmailData, RecordSentEmailVariables>;
 export function recordSentEmail(dc: DataConnect, vars: RecordSentEmailVariables): MutationPromise<RecordSentEmailData, RecordSentEmailVariables>;
+
+interface DeleteAllMyDataRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (): MutationRef<DeleteAllMyDataData, undefined>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect): MutationRef<DeleteAllMyDataData, undefined>;
+  operationName: string;
+}
+export const deleteAllMyDataRef: DeleteAllMyDataRef;
+
+export function deleteAllMyData(): MutationPromise<DeleteAllMyDataData, undefined>;
+export function deleteAllMyData(dc: DataConnect): MutationPromise<DeleteAllMyDataData, undefined>;
 
 interface GetMySettingsRef {
   /* Allow users to create refs without passing in DataConnect */

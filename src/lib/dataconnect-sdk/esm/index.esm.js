@@ -137,6 +137,18 @@ export function recordSentEmail(dcOrVars, vars) {
   return executeMutation(recordSentEmailRef(dcInstance, inputVars));
 }
 
+export const deleteAllMyDataRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'DeleteAllMyData');
+}
+deleteAllMyDataRef.operationName = 'DeleteAllMyData';
+
+export function deleteAllMyData(dc) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dc, undefined);
+  return executeMutation(deleteAllMyDataRef(dcInstance, inputVars));
+}
+
 export const getMySettingsRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();

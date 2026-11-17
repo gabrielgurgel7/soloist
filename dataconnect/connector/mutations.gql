@@ -317,3 +317,16 @@ mutation RecordSentEmail(
     }
   )
 }
+
+# 12. ZONA DE PERIGO: Excluir TODOS os dados da conta autenticada (Irreversível)
+# Apaga em uma única transação ACID somente as linhas cujo dono é o auth.uid do token.
+# Os itens de combo (service_combo_items) são removidos em cascata junto com os combos.
+mutation DeleteAllMyData @auth(level: USER) @transaction {
+  sentEmail_deleteMany(where: { owner: { uid: { eq_expr: "auth.uid" } } })
+  project_deleteMany(where: { owner: { uid: { eq_expr: "auth.uid" } } })
+  serviceCombo_deleteMany(where: { owner: { uid: { eq_expr: "auth.uid" } } })
+  client_deleteMany(where: { owner: { uid: { eq_expr: "auth.uid" } } })
+  emailTemplate_deleteMany(where: { owner: { uid: { eq_expr: "auth.uid" } } })
+  catalogService_deleteMany(where: { owner: { uid: { eq_expr: "auth.uid" } } })
+  user_delete(key: { uid_expr: "auth.uid" })
+}

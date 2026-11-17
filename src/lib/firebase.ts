@@ -29,6 +29,7 @@ import {
   closeComboOrderTransaction,
   saveEmailTemplate,
   recordSentEmail,
+  deleteAllMyData,
 } from "@soloist/dataconnect";
 import {
   type SoloistAppSettings,
@@ -546,4 +547,17 @@ export async function syncLocalCrmWithPostgres(
     userEmail: userEmail || auth.currentUser.email || "",
   });
   await pullUserAccountFromPostgres(auth.currentUser);
+}
+
+/**
+ * ZONA DE PERIGO: exclui permanentemente todos os dados da conta autenticada
+ * no PostgreSQL (SQL Connect). O servidor só apaga linhas do próprio auth.uid.
+ * A conta de login (Firebase Auth) é mantida.
+ */
+export async function deleteAllMyDataFromPostgres(): Promise<void> {
+  const { auth, dataConnect } = getSoloistFirebase();
+  if (!auth.currentUser) {
+    throw new Error("Você precisa estar logado para excluir seus dados.");
+  }
+  await deleteAllMyData(dataConnect);
 }

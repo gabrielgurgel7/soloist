@@ -161,6 +161,20 @@ exports.recordSentEmail = function recordSentEmail(dcOrVars, vars) {
 }
 ;
 
+const deleteAllMyDataRef = (dc) => {
+  const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'DeleteAllMyData');
+}
+deleteAllMyDataRef.operationName = 'DeleteAllMyData';
+exports.deleteAllMyDataRef = deleteAllMyDataRef;
+
+exports.deleteAllMyData = function deleteAllMyData(dc) {
+  const { dc: dcInstance, vars: inputVars } = validateArgs(connectorConfig, dc, undefined);
+  return executeMutation(deleteAllMyDataRef(dcInstance, inputVars));
+}
+;
+
 const getMySettingsRef = (dc) => {
   const { dc: dcInstance} = validateArgs(connectorConfig, dc, undefined);
   dcInstance._useGeneratedSdk();

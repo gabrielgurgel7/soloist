@@ -17,7 +17,8 @@ import {
   RefreshCw,
   Award,
   Download,
-  RotateCcw,
+  Trash2,
+  TriangleAlert,
   Sun,
   Moon,
   Sparkles,
@@ -40,6 +41,7 @@ import {
   resetAllCrmData,
 } from "../../services/crmStorage";
 import { useBrazilCities } from "../../services/brazilCities";
+import { deleteAllMyDataFromPostgres } from "../../lib/firebase";
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -130,8 +132,8 @@ const CATEGORIES: SettingsCategory[] = [
     label: "Armazenamento",
     title: "Backup & Dados do Sistema",
     description:
-      "Exporte seus dados salvos em formato JSON ou restaure o sistema para os valores iniciais de demonstração.",
-    keywords: ["backup", "exportar", "resetar", "armazenamento", "dados"],
+      "Exporte seus dados salvos em formato JSON ou exclua permanentemente todos os dados da sua conta.",
+    keywords: ["backup", "exportar", "excluir", "apagar", "armazenamento", "dados"],
     icon: HardDrive,
   },
 ];
@@ -240,10 +242,30 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     URL.revokeObjectURL(url);
   }
 
-  function handleResetDemoData() {
-    resetAllCrmData();
-    setSettings(getStoredSettings());
-    window.location.reload();
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleConfirmDeleteAllData() {
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      // 1. Apaga primeiro no banco PostgreSQL (fonte da verdade)
+      await deleteAllMyDataFromPostgres();
+      // 2. Só depois limpa o cache local deste navegador
+      resetAllCrmData();
+      setSettings(getStoredSettings());
+      setIsDeleteConfirmOpen(false);
+      window.location.reload();
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error
+          ? `Não foi possível excluir no banco de dados: ${err.message}`
+          : "Não foi possível excluir no banco de dados. Nenhum dado foi apagado.",
+      );
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   const filteredCategories = searchQuery.trim()
@@ -1065,14 +1087,29 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                     <Download size={15} />
                     Exportar Backup Completo (.json)
                   </button>
+                </div>
 
+                {/* ZONA DE PERIGO */}
+                <div className="flex flex-col gap-2 mt-2 p-3 rounded-2xl border border-red-500/40 bg-red-950/30">
+                  <div className="flex items-center gap-1.5 text-red-300 text-xs font-bold uppercase tracking-wide">
+                    <TriangleAlert size={14} />
+                    <span>Zona de Perigo</span>
+                  </div>
+                  <p className="text-[11px] text-neutral-300 leading-relaxed">
+                    Exclui permanentemente todos os seus serviços, combos,
+                    clientes, projetos, e-mails e configurações do banco de
+                    dados. Recomendamos exportar um backup antes.
+                  </p>
                   <button
                     type="button"
-                    onClick={handleResetDemoData}
-                    className="flex items-center justify-center gap-2 text-neutral-50 text-sm border border-neutral-500 h-8 w-full rounded-full px-4 hover:bg-neutral-400 transition-colors cursor-pointer"
+                    onClick={() => {
+                      setDeleteError(null);
+                      setIsDeleteConfirmOpen(true);
+                    }}
+                    className="flex items-center justify-center gap-2 text-red-400 text-sm font-semibold border-2 border-red-500 h-9 w-full rounded-full px-4 hover:bg-red-500 hover:text-white transition-colors cursor-pointer"
                   >
-                    <RotateCcw size={15} />
-                    Restaurar Dados de Demonstração
+                    <Trash2 size={15} />
+                    Excluir Todos os Dados
                   </button>
                 </div>
               </div>
@@ -1112,6 +1149,72 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           </div>
         </form>
       </div>
+
+      {/* MODAL DE CONFIRMAÇÃO: EXCLUSÃO IRREVERSÍVEL */}
+      {isDeleteConfirmOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-60 p-4"
+          onClick={() => !isDeleting && setIsDeleteConfirmOpen(false)}
+          role="presentation"
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-all-title"
+            aria-describedby="delete-all-desc"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm bg-neutral-900 border-2 border-red-500/60 rounded-3xl p-5 flex flex-col gap-4 shadow-2xl shadow-red-950/50"
+          >
+            <div className="flex flex-col items-center text-center gap-2">
+              <div className="w-14 h-14 rounded-full bg-red-500/15 border border-red-500/40 flex items-center justify-center text-red-400">
+                <TriangleAlert size={28} />
+              </div>
+              <h4
+                id="delete-all-title"
+                className="text-lg font-bold font-sora text-red-300"
+              >
+                Excluir todos os dados?
+              </h4>
+              <p
+                id="delete-all-desc"
+                className="text-xs text-neutral-300 leading-relaxed"
+              >
+                Esta ação é <strong className="text-red-300">irreversível</strong>.
+                Todos os seus serviços, combos, clientes, projetos, templates e
+                histórico de e-mails, além das suas configurações, serão
+                apagados permanentemente do banco de dados e não poderão ser
+                recuperados. Sua conta de login continuará existindo.
+              </p>
+            </div>
+
+            {deleteError && (
+              <p className="text-[11px] text-red-300 bg-red-950/60 border border-red-500/30 rounded-xl p-2 text-center">
+                {deleteError}
+              </p>
+            )}
+
+            <div className="flex flex-col-reverse sm:flex-row gap-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                className="flex-1 h-9 rounded-full border border-neutral-500 text-neutral-100 text-sm hover:bg-neutral-700 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDeleteAllData}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 h-9 rounded-full bg-red-600 hover:bg-red-500 text-white text-sm font-bold transition-colors cursor-pointer disabled:opacity-60"
+              >
+                <Trash2 size={14} />
+                {isDeleting ? "Excluindo..." : "Sim, excluir tudo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </BaseCard>
   );
 }

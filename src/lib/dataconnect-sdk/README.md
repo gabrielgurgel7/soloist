@@ -27,6 +27,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*DeleteServiceCombo*](#deleteservicecombo)
   - [*SaveEmailTemplate*](#saveemailtemplate)
   - [*RecordSentEmail*](#recordsentemail)
+  - [*DeleteAllMyData*](#deleteallmydata)
 
 # Accessing the connector
 A connector is a collection of Queries and Mutations. One SDK is generated for each connector - this SDK is generated for the connector `soloist-connector`. You can find more information about connectors in the [Data Connect documentation](https://firebase.google.com/docs/data-connect#how-does).
@@ -2328,6 +2329,127 @@ console.log(data.sentEmail_insert);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.sentEmail_insert);
+});
+```
+
+## DeleteAllMyData
+You can execute the `DeleteAllMyData` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [dataconnect-sdk/index.d.ts](./index.d.ts):
+```typescript
+deleteAllMyData(): MutationPromise<DeleteAllMyDataData, undefined>;
+
+interface DeleteAllMyDataRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (): MutationRef<DeleteAllMyDataData, undefined>;
+}
+export const deleteAllMyDataRef: DeleteAllMyDataRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+deleteAllMyData(dc: DataConnect): MutationPromise<DeleteAllMyDataData, undefined>;
+
+interface DeleteAllMyDataRef {
+  ...
+  (dc: DataConnect): MutationRef<DeleteAllMyDataData, undefined>;
+}
+export const deleteAllMyDataRef: DeleteAllMyDataRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the deleteAllMyDataRef:
+```typescript
+const name = deleteAllMyDataRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `DeleteAllMyData` mutation has no variables.
+### Return Type
+Recall that executing the `DeleteAllMyData` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `DeleteAllMyDataData`, which is defined in [dataconnect-sdk/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface DeleteAllMyDataData {
+  sentEmail_deleteMany: number;
+  project_deleteMany: number;
+  serviceCombo_deleteMany: number;
+  client_deleteMany: number;
+  emailTemplate_deleteMany: number;
+  catalogService_deleteMany: number;
+  user_delete?: User_Key | null;
+}
+```
+### Using `DeleteAllMyData`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, deleteAllMyData } from '@soloist/dataconnect';
+
+
+// Call the `deleteAllMyData()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await deleteAllMyData();
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await deleteAllMyData(dataConnect);
+
+console.log(data.sentEmail_deleteMany);
+console.log(data.project_deleteMany);
+console.log(data.serviceCombo_deleteMany);
+console.log(data.client_deleteMany);
+console.log(data.emailTemplate_deleteMany);
+console.log(data.catalogService_deleteMany);
+console.log(data.user_delete);
+
+// Or, you can use the `Promise` API.
+deleteAllMyData().then((response) => {
+  const data = response.data;
+  console.log(data.sentEmail_deleteMany);
+  console.log(data.project_deleteMany);
+  console.log(data.serviceCombo_deleteMany);
+  console.log(data.client_deleteMany);
+  console.log(data.emailTemplate_deleteMany);
+  console.log(data.catalogService_deleteMany);
+  console.log(data.user_delete);
+});
+```
+
+### Using `DeleteAllMyData`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, deleteAllMyDataRef } from '@soloist/dataconnect';
+
+
+// Call the `deleteAllMyDataRef()` function to get a reference to the mutation.
+const ref = deleteAllMyDataRef();
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = deleteAllMyDataRef(dataConnect);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.sentEmail_deleteMany);
+console.log(data.project_deleteMany);
+console.log(data.serviceCombo_deleteMany);
+console.log(data.client_deleteMany);
+console.log(data.emailTemplate_deleteMany);
+console.log(data.catalogService_deleteMany);
+console.log(data.user_delete);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.sentEmail_deleteMany);
+  console.log(data.project_deleteMany);
+  console.log(data.serviceCombo_deleteMany);
+  console.log(data.client_deleteMany);
+  console.log(data.emailTemplate_deleteMany);
+  console.log(data.catalogService_deleteMany);
+  console.log(data.user_delete);
 });
 ```
 

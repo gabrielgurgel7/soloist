@@ -728,4 +728,21 @@ export function resetAllCrmData(): void {
   saveStoredEmailHistory([]);
   writeScopedStorage(STORAGE_KEYS.ACTIVITY_LOG, []);
   writeScopedStorage(STORAGE_KEYS.READ_NOTIFICATIONS, []);
+
+  // Remove também as configurações/perfil salvos desta conta neste navegador
+  const settingsKey = getScopedStorageKey(STORAGE_KEYS.SETTINGS);
+  if (settingsKey) {
+    try {
+      localStorage.removeItem(settingsKey);
+      localStorage.removeItem(
+        `soloist_reference_hourly_cost_${activeSessionUser?.uid}`,
+      );
+    } catch {
+      // Ignore storage errors
+    }
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("soloist-settings-updated"));
+    window.dispatchEvent(new Event("soloist-auth-changed"));
+  }
 }
